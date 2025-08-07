@@ -1,0 +1,10 @@
+name = "custom-order-system"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[[r2_buckets]]
+binding = "ORDER_BUCKET"
+bucket_name = "kevin5926"
+
+[vars]
+GOOGLE_SHEETS_URL = ""
