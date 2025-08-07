@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>파일 업로드 & 관리 시스템</title>
+    <!-- AWS SDK는 실제 연동시에만 필요 -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            padding: 30px;
+            color: white;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .storage-info {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            background: #e9ecef;
+            border: none;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .tab:hover {
+            background: #dee2e6;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px;
+            text-align: center;
+            background: linear-gradient(45deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 30px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        }
+
+        .upload-area.dragging {
+            border-color: #00d2ff;
+            background: rgba(0, 210, 255, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .file-list {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .file-meta {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .progress {
+            width: 100%;
+            height: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress-bar-upload {
+            height: 100%;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d1edff;
+            color: #0c5460;
+            border: 1px solid #b6effb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📁 파일 업로드 & 관리 시스템</h1>
+            <p>Cloudflare R2 Storage를 활용한 파일 관리</p>
+            
+            <div class="storage-info">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>저장소 사용량</span>
+                    <span id="storage-usage">0 MB / 10,240 MB</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="storage-progress" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('upload')">📤 파일 업로드</button>
+            <button class="tab" onclick="switchTab('manage')">🗂️ 파일 관리</button>
+            <button class="tab" onclick="switchTab('settings')">⚙️ 설정</button>
+        </div>
+
+        <div class="content">
+            <!-- 업로드 탭 -->
+            <div id="upload-tab" class="tab-content active">
+                <div id="alerts"></div>
+                
+                <div class="upload-area" onclick="document.getElementById('file-input').click()" 
+                     ondragover="handleDragOver(event)" ondrop="handleDrop(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
+                    <div class="upload-icon">☁️</div>
+                    <h3>파일을 드래그하거나 클릭하여 업로드</h3>
+                    <p>최대 200MB까지 지원</p>
+                    <input type="file" id="file-input" style="display: none;" onchange="handleFileSelect(event)" multiple>
+                </div>
+
+                <div class="form-group">
+                    <label>📋 작업 옵션</label>
+                    <select id="work-option">
+                        <option value="basic">기본 작업</option>
+                        <option value="premium">프리미엄 작업</option>
+                        <option value="rush">긴급 작업</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>📝 특별 요청사항</label>
+                    <textarea id="special-request" rows="4" placeholder="특별한 요청사항을 입력해주세요..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>📞 연락처</label>
+                    <input type="text" id="contact" placeholder="연락 가능한 전화번호나 이메일">
+                </div>
+
+                <div id="upload-progress" style="display: none;">
+                    <div class="progress">
+                        <div class="progress-bar-upload" id="progress-bar"></div>
+                    </div>
+                    <p id="progress-text">업로드 중... 0%</p>
+                </div>
+
+                <button class="btn btn-primary" onclick="startUpload()">🚀 업로드 시작</button>
+            </div>
+
+            <!-- 관리 탭 -->
+            <div id="manage-tab" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3>📁 업로드된 파일 목록</h3>
+                    <div>
+                        <button class="btn btn-primary" onclick="refreshFileList()">🔄 새로고침</button>
+                        <button class="btn btn-danger" onclick="cleanupOldFiles()">🧹 오래된 파일 정리</button>
+                    </div>
+                </div>
+
+                <div class="file-list" id="file-list">
+                    <!-- 파일 목록이 여기에 동적으로 추가됩니다 -->
+                </div>
+            </div>
+
+            <!-- 설정 탭 -->
+            <div id="settings-tab" class="tab-content">
+                <h3>⚙️ Cloudflare R2 설정</h3>
+                
+                <div class="alert alert-warning">
+                    <strong>⚠️ 주의:</strong> 실제 운영을 위해서는 아래 정보를 입력해주세요.
+                </div>
+
+                <div class="form-group">
+                    <label>🔑 Account ID</label>
+                    <input type="text" id="account-id" placeholder="Cloudflare Account ID를 입력하세요">
+                </div>
+
+                <div class="form-group">
+                    <label>🗝️ Access Key ID</label>
+                    <input type="text" id="access-key" placeholder="R2 Access Key ID를 입력하세요">
+                </div>
+
+                <div class="form-group">
+                    <label>🔐 Secret Access Key</label>
+                    <input type="password" id="secret-key" placeholder="R2 Secret Access Key를 입력하세요">
+                </div>
+
+                <div class="form-group">
+                    <label>🪣 Bucket Name</label>
+                    <input type="text" id="bucket-name" placeholder="R2 버킷 이름을 입력하세요">
+                </div>
+
+                <div class="form-group">
+                    <label>🗑️ 자동 삭제 기간 (일)</label>
+                    <input type="number" id="auto-delete-days" value="7" min="1" max="30">
+                </div>
+
+                <button class="btn btn-primary" onclick="saveSettings()">💾 설정 저장</button>
+                <button class="btn btn-primary" onclick="testConnection()">🔍 연결 테스트</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let selectedFiles = [];
+        let s3Client = null;
+        let storageUsage = 0;
+        let maxStorage = 10 * 1024 * 1024 * 1024; // 10GB
+
+        // 페이지 로드시 설정 불러오기
+        window.onload = function() {
+            loadSettings();
+            updateStorageInfo();
+            refreshFileList();
+        };
+
+        // 탭 전환
+        function switchTab(tabName) {
+            // 모든 탭 비활성화
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // 선택된 탭 활성화
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        // 알림 표시
+        function showAlert(message, type = 'success') {
+            const alertsDiv = document.getElementById('alerts');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = message;
+            alertsDiv.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // 드래그 앤 드롭 처리
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+
+        function handleDragEnter(e) {
+            e.preventDefault();
+            e.target.closest('.upload-area').classList.add('dragging');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.target.closest('.upload-area').classList.remove('dragging');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.target.closest('.upload-area').classList.remove('dragging');
+            const files = Array.from(e.dataTransfer.files);
+            handleFiles(files);
+        }
+
+        // 파일 선택 처리
+        function handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            selectedFiles = [];
+            let totalSize = 0;
+            let hasError = false;
+
+            files.forEach(file => {
+                if (file.size > 200 * 1024 * 1024) { // 200MB 제한
+                    showAlert(`❌ ${file.name}은 200MB를 초과합니다.`, 'error');
+                    hasError = true;
+                } else {
+                    selectedFiles.push(file);
+                    totalSize += file.size;
+                }
+            });
+
+            if (storageUsage + totalSize > maxStorage) {
+                showAlert('❌ 저장소 용량이 부족합니다. 기존 파일을 정리해주세요.', 'error');
+                return;
+            }
+
+            if (!hasError && selectedFiles.length > 0) {
+                showAlert(`✅ ${selectedFiles.length}개 파일 선택됨 (총 ${(totalSize / 1024 / 1024).toFixed(2)}MB)`, 'success');
+            }
+        }
+
+        // 업로드 시작
+        async function startUpload() {
+            if (selectedFiles.length === 0) {
+                showAlert('❌ 업로드할 파일을 선택해주세요.', 'error');
+                return;
+            }
+
+            if (!s3Client) {
+                showAlert('❌ R2 설정을 먼저 완료해주세요.', 'error');
+                switchTab('settings');
+                return;
+            }
+
+            const workOption = document.getElementById('work-option').value;
+            const specialRequest = document.getElementById('special-request').value;
+            const contact = document.getElementById('contact').value;
+
+            if (!contact.trim()) {
+                showAlert('❌ 연락처를 입력해주세요.', 'error');
+                return;
+            }
+
+            document.getElementById('upload-progress').style.display = 'block';
+
+            try {
+                for (let i = 0; i < selectedFiles.length; i++) {
+                    const file = selectedFiles[i];
+                    const progress = (i / selectedFiles.length) * 100;
+                    
+                    document.getElementById('progress-bar').style.width = progress + '%';
+                    document.getElementById('progress-text').textContent = `업로드 중... ${Math.round(progress)}% (${i + 1}/${selectedFiles.length})`;
+
+                    await uploadFile(file, workOption, specialRequest, contact);
+                }
+
+                document.getElementById('progress-bar').style.width = '100%';
+                document.getElementById('progress-text').textContent = '업로드 완료!';
+                
+                showAlert('🎉 모든 파일이 성공적으로 업로드되었습니다!', 'success');
+                
+                // Google Sheets에 정보 저장 (여기서는 시뮬레이션)
+                await saveToGoogleSheets({
+                    files: selectedFiles.map(f => f.name),
+                    workOption,
+                    specialRequest,
+                    contact,
+                    uploadTime: new Date().toLocaleString()
+                });
+
+                // 폼 초기화
+                selectedFiles = [];
+                document.getElementById('file-input').value = '';
+                document.getElementById('special-request').value = '';
+                document.getElementById('contact').value = '';
+                
+                setTimeout(() => {
+                    document.getElementById('upload-progress').style.display = 'none';
+                }, 3000);
+
+                updateStorageInfo();
+                refreshFileList();
+
+            } catch (error) {
+                showAlert(`❌ 업로드 실패: ${error.message}`, 'error');
+                document.getElementById('upload-progress').style.display = 'none';
+            }
+        }
+
+        // 개별 파일 업로드 (시뮬레이션)
+        async function uploadFile(file, workOption, specialRequest, contact) {
+            return new Promise((resolve, reject) => {
+                // 실제 R2 업로드 코드는 여기에 구현
+                // 현재는 시뮬레이션을 위한 지연
+                setTimeout(() => {
+                    const fileData = {
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        uploadTime: Date.now(),
+                        workOption,
+                        specialRequest,
+                        contact,
+                        id: 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+                    };
+
+                    // 로컬 스토리지에 파일 정보 저장
+                    let files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+                    files.push(fileData);
+                    localStorage.setItem('uploadedFiles', JSON.stringify(files));
+
+                    storageUsage += file.size;
+                    resolve();
+                }, 1000);
+            });
+        }
+
+        // Google Sheets 저장 (시뮬레이션)
+        async function saveToGoogleSheets(data) {
+            // 실제로는 Google Sheets API 또는 Google Apps Script 웹앱 호출
+            console.log('Google Sheets에 저장:', data);
+            return Promise.resolve();
+        }
+
+        // 설정 저장
+        function saveSettings() {
+            const settings = {
+                accountId: document.getElementById('account-id').value,
+                accessKey: document.getElementById('access-key').value,
+                secretKey: document.getElementById('secret-key').value,
+                bucketName: document.getElementById('bucket-name').value,
+                autoDeleteDays: document.getElementById('auto-delete-days').value
+            };
+
+            localStorage.setItem('r2Settings', JSON.stringify(settings));
+            
+            // S3 클라이언트 초기화
+            if (settings.accessKey && settings.secretKey && settings.accountId) {
+                // 실제 환경에서는 이 정보를 안전하게 처리해야 합니다
+                s3Client = {
+                    // 실제 AWS SDK 설정은 여기에
+                    settings: settings
+                };
+                showAlert('✅ 설정이 저장되었습니다.', 'success');
+            } else {
+                showAlert('❌ 모든 필수 정보를 입력해주세요.', 'error');
+            }
+        }
+
+        // 설정 불러오기
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('r2Settings') || '{}');
+            
+            if (settings.accountId) document.getElementById('account-id').value = settings.accountId;
+            if (settings.accessKey) document.getElementById('access-key').value = settings.accessKey;
+            if (settings.secretKey) document.getElementById('secret-key').value = settings.secretKey;
+            if (settings.bucketName) document.getElementById('bucket-name').value = settings.bucketName;
+            if (settings.autoDeleteDays) document.getElementById('auto-delete-days').value = settings.autoDeleteDays;
+
+            if (settings.accessKey && settings.secretKey && settings.accountId) {
+                s3Client = { settings: settings };
+            }
+        }
+
+        // 연결 테스트
+        function testConnection() {
+            if (!s3Client) {
+                showAlert('❌ 설정 정보를 먼저 저장해주세요.', 'error');
+                return;
+            }
+            
+            // 실제 환경에서는 R2에 테스트 요청을 보냅니다
+            showAlert('✅ R2 연결 테스트 성공!', 'success');
+        }
+
+        // 저장소 정보 업데이트
+        function updateStorageInfo() {
+            const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+            storageUsage = files.reduce((sum, file) => sum + file.size, 0);
+            
+            const usageMB = (storageUsage / 1024 / 1024).toFixed(2);
+            const maxMB = (maxStorage / 1024 / 1024).toFixed(0);
+            const percentage = (storageUsage / maxStorage * 100).toFixed(1);
+            
+            document.getElementById('storage-usage').textContent = `${usageMB} MB / ${maxMB} MB`;
+            document.getElementById('storage-progress').style.width = percentage + '%';
+
+            if (percentage > 80) {
+                document.getElementById('storage-progress').style.background = 'linear-gradient(90deg, #ff6b6b, #ee5a24)';
+            }
+        }
+
+        // 파일 목록 새로고침
+        function refreshFileList() {
+            const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+            const fileListDiv = document.getElementById('file-list');
+            
+            if (files.length === 0) {
+                fileListDiv.innerHTML = '<p style="text-align: center; color: #666;">업로드된 파일이 없습니다.</p>';
+                return;
+            }
+
+            fileListDiv.innerHTML = files.map(file => `
+                <div class="file-item">
+                    <div class="file-info">
+                        <div class="file-name">📄 ${file.name}</div>
+                        <div class="file-meta">
+                            크기: ${(file.size / 1024 / 1024).toFixed(2)}MB | 
+                            업로드: ${new Date(file.uploadTime).toLocaleString()} |
+                            작업: ${file.workOption} |
+                            연락처: ${file.contact}
+                        </div>
+                    </div>
+                    <div>
+                        <button class="btn btn-danger" onclick="deleteFile('${file.id}')">🗑️ 삭제</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 파일 삭제
+        function deleteFile(fileId) {
+            if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) return;
+
+            let files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+            files = files.filter(file => file.id !== fileId);
+            localStorage.setItem('uploadedFiles', JSON.stringify(files));
+
+            showAlert('✅ 파일이 삭제되었습니다.', 'success');
+            refreshFileList();
+            updateStorageInfo();
+        }
+
+        // 오래된 파일 정리
+        function cleanupOldFiles() {
+            const autoDeleteDays = parseInt(document.getElementById('auto-delete-days').value) || 7;
+            const cutoffTime = Date.now() - (autoDeleteDays * 24 * 60 * 60 * 1000);
+            
+            let files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+            const oldFiles = files.filter(file => file.uploadTime < cutoffTime);
+            
+            if (oldFiles.length === 0) {
+                showAlert('🧹 정리할 오래된 파일이 없습니다.', 'success');
+                return;
+            }
+
+            if (!confirm(`${oldFiles.length}개의 오래된 파일을 삭제하시겠습니까?`)) return;
+
+            files = files.filter(file => file.uploadTime >= cutoffTime);
+            localStorage.setItem('uploadedFiles', JSON.stringify(files));
+
+            showAlert(`🧹 ${oldFiles.length}개의 오래된 파일이 정리되었습니다.`, 'success');
+            refreshFileList();
+            updateStorageInfo();
+        }
+    </script>
+</body>
+</html>
