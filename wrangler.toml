@@ -7,4 +7,4 @@ binding = "ORDER_BUCKET"
 bucket_name = "kevin5926"
 
 [vars]
-GOOGLE_SHEETS_URL = ""
+GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbx_ht1gvdzFQoilIuHJtLwBCXqFwKaNemexWtopg0wx8icfjFCNylYcnAwqbZV6LNkv/exec"
