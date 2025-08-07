@@ -1,4 +1,4 @@
-name = "custom-order-system"
+name = "order-worker"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
