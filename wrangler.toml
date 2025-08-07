@@ -1,10 +1,10 @@
-name = "order-worker"
+name = "kevin5926"              # wrangler 프로젝트 이름 (원하는 대로 가능)
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
 [[r2_buckets]]
 binding = "ORDER_BUCKET"
-bucket_name = "kevin5926"
+bucket_name = "kevin5926"       # 여기엔 실제 R2 버킷 이름 써야 함
 
 [vars]
-GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbx_ht1gvdzFQoilIuHJtLwBCXqFwKaNemexWtopg0wx8icfjFCNylYcnAwqbZV6LNkv/exec"
+GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/~~your-script-id~~/exec"
